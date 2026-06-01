@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>소재 운영 체크 툴</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Pretendard:wght@400;500;600&display=swap');
+:root{
+  --bg:#f5f4f0;--surface:#ffffff;--surface2:#f0efe9;--border:#e2e0d8;--border2:#ccc9be;
+  --text:#1a1916;--text2:#6b6860;--text3:#9c9a94;
+  --green:#1a6640;--green-bg:#eaf4ee;--green-border:#a8d4b4;
+  --red:#991b1b;--red-bg:#fef2f2;--red-border:#fca5a5;
+  --blue:#1e3a8a;--blue-bg:#eff6ff;--blue-border:#93c5fd;
+  --amber:#92400e;--amber-bg:#fffbeb;--amber-border:#fcd34d;
+  --accent:#2d2a24;
+  font-size:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'Pretendard',sans-serif;min-height:100vh;}
+
+/* Layout */
+.app{display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 2rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.logo{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:500;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:8px;}
+.logo-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.file-count{font-size:11px;font-family:'IBM Plex Mono',monospace;color:var(--text3);background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:3px 8px;}
+
+.main{display:flex;flex:1;min-height:0;}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);padding:1.5rem 0;flex-shrink:0;position:sticky;top:52px;height:calc(100vh - 52px);overflow-y:auto;}
+.sidebar-section{padding:0 1rem;margin-bottom:1.5rem;}
+.sidebar-label{font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;padding:0 4px;}
+.nav-item{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .12s;user-select:none;}
+.nav-item:hover{background:var(--surface2);color:var(--text);}
+.nav-item.active{background:var(--accent);color:#fff;}
+.nav-item svg{flex-shrink:0;opacity:.7;}
+.nav-item.active svg{opacity:1;}
+.nav-badge{margin-left:auto;font-size:10px;font-family:'IBM Plex Mono',monospace;background:rgba(0,0,0,.08);padding:1px 5px;border-radius:3px;}
+.nav-item.active .nav-badge{background:rgba(255,255,255,.2);color:#fff;}
+
+.content{flex:1;padding:2rem;overflow-y:auto;min-width:0;}
+.page{display:none;}
+.page.active{display:block;}
+.page-title{font-size:20px;font-weight:600;color:var(--text);margin-bottom:4px;letter-spacing:-.02em;}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:1.5rem;}
+
+/* Cards */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin-bottom:1rem;}
+.card-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);margin-bottom:10px;}
+
+/* Upload zone */
+.dropzone{border:1.5px dashed var(--border2);border-radius:8px;padding:1.75rem 1rem;text-align:center;cursor:pointer;transition:all .15s;background:var(--surface2);}
+.dropzone:hover{border-color:var(--text2);background:var(--bg);}
+.dz-icon{font-size:24px;margin-bottom:8px;color:var(--text3);}
+.dz-main{font-size:13px;color:var(--text2);}strong{font-weight:500;}
+.dz-sub{font-size:11px;color:var(--text3);margin-top:3px;}
+#file-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+.fchip{display:inline-flex;align-items:center;gap:6px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:11px;font-family:'IBM Plex Mono',monospace;}
+.plt{font-size:9px;font-weight:600;padding:2px 5px;border-radius:3px;}
+.plt-ios{background:#dbeafe;color:#1e40af;}
+.plt-aos{background:#dcfce7;color:#166534;}
+.plt-etc{background:var(--surface2);color:var(--text3);}
+
+/* Form elements */
+textarea,input[type=text]{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:9px 12px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text);outline:none;resize:vertical;}
+textarea:focus,input[type=text]:focus{border-color:var(--text2);}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:10px;}
+.seg-btn{padding:6px 14px;font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text2);background:none;border:none;cursor:pointer;transition:all .12s;}
+.seg-btn.on{background:var(--accent);color:#fff;}
+.seg-btn:hover:not(.on){background:var(--surface2);}
+
+.btn-row{display:flex;gap:8px;margin-top:12px;align-items:center;}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:7px;padding:8px 16px;font-size:12px;font-weight:500;cursor:pointer;transition:all .12s;border:none;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:#3d3a32;}
+.btn-ghost{background:none;color:var(--text2);border:1px solid var(--border);}
+.btn-ghost:hover{background:var(--surface2);}
+.status-msg{font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;}
+
+/* Summary bar */
+.sum-bar{display:flex;gap:10px;margin-bottom:1rem;flex-wrap:wrap;}
+.sum-box{flex:1;min-width:100px;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;}
+.sum-box.ok{background:var(--green-bg);border-color:var(--green-border);}
+.sum-box.ng{background:var(--red-bg);border-color:var(--red-border);}
+.sum-n{font-size:22px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:var(--text);line-height:1;margin-top:3px;}
+.sum-l{font-size:10px;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;}
+.sum-box.ok .sum-n,.sum-box.ok .sum-l{color:var(--green);}
+.sum-box.ng .sum-n,.sum-box.ng .sum-l{color:var(--red);}
+
+/* Filter row */
+.filter-row{display:flex;gap:6px;margin-bottom:1rem;flex-wrap:wrap;}
+.f-btn{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:11px;cursor:pointer;color:var(--text2);font-family:'IBM Plex Mono',monospace;transition:all .12s;}
+.f-btn:hover{background:var(--surface2);}
+.f-btn.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+
+/* Label grid */
+.label-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px;margin-bottom:1.25rem;}
+.lchip-card{border:1px solid var(--border);border-radius:8px;padding:11px 13px;display:flex;align-items:flex-start;gap:10px;}
+.lchip-card.match{background:var(--green-bg);border-color:var(--green-border);}
+.lchip-card.nomatch{background:var(--red-bg);border-color:var(--red-border);}
+.lc-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:3px;}
+.match .lc-dot{background:#22c55e;}
+.nomatch .lc-dot{background:#ef4444;}
+.lc-name{font-size:11px;font-family:'IBM Plex Mono',monospace;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--text);}
+.match .lc-name{color:var(--green);}
+.nomatch .lc-name{color:var(--red);}
+.lc-sub{font-size:10px;color:var(--text3);margin-top:2px;}
+.match .lc-sub{color:#4ade80;}
+.nomatch .lc-sub{color:#f87171;}
+
+/* File-only chips */
+.fonly-wrap{display:flex;flex-wrap:wrap;gap:5px;}
+.fonly-chip{font-size:10px;font-family:'IBM Plex Mono',monospace;background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;color:var(--text3);}
+
+/* Diff blocks */
+.diff{border-radius:7px;padding:11px 14px;margin-bottom:8px;}
+.diff-w{background:var(--amber-bg);border:1px solid var(--amber-border);}
+.diff-d{background:var(--red-bg);border:1px solid var(--red-border);}
+.diff-ok{background:var(--green-bg);border:1px solid var(--green-border);}
+.diff-t{font-size:11px;font-weight:600;margin-bottom:5px;}
+.diff-w .diff-t{color:var(--amber);}
+.diff-d .diff-t{color:var(--red);}
+.diff-ok .diff-t{color:var(--green);}
+.diff-i{font-size:11px;font-family:'IBM Plex Mono',monospace;padding:1px 0;}
+.diff-w .diff-i{color:var(--amber);}
+.diff-d .diff-i{color:var(--red);}
+
+/* Table */
+.tbl-outer{border:1px solid var(--border);border-radius:8px;overflow:hidden;}
+table{width:100%;border-collapse:collapse;}
+th{font-size:10px;font-weight:600;color:var(--text3);padding:8px 10px;text-align:left;background:var(--surface2);border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.05em;}
+td{font-size:11px;padding:8px 10px;border-bottom:1px solid var(--surface2);vertical-align:middle;font-family:'IBM Plex Mono',monospace;color:var(--text2);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:var(--surface2);}
+.r{text-align:right;}
+.c{text-align:center;}
+
+/* Campaign dashboard (B) */
+.camp-wrap{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;min-height:400px;}
+.camp-sidebar{width:200px;background:var(--surface2);border-right:1px solid var(--border);flex-shrink:0;overflow-y:auto;}
+.camp-sidebar-hd{padding:12px 14px;border-bottom:1px solid var(--border);}
+.camp-sidebar-hd p{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);}
+.camp-item{padding:9px 14px;cursor:pointer;border-bottom:1px solid var(--border);transition:all .12s;}
+.camp-item:last-child{border-bottom:none;}
+.camp-item:hover{background:var(--bg);}
+.camp-item.on{background:var(--surface);border-right:2px solid var(--accent);}
+.ci-name{font-size:11px;font-weight:500;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-sub{font-size:9px;font-family:'IBM Plex Mono',monospace;color:var(--text3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.ci-count{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-family:'IBM Plex Mono',monospace;background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);padding:1px 5px;border-radius:3px;margin-top:4px;}
+.ci-dot{width:5px;height:5px;border-radius:50%;background:#22c55e;}
+.camp-content{flex:1;padding:1.25rem;overflow-y:auto;}
+.camp-hd{margin-bottom:1rem;border-bottom:1px solid var(--border);padding-bottom:12px;}
+.camp-title{font-size:14px;font-weight:600;color:var(--text);}
+.camp-oid{font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);margin-top:2px;}
+.camp-stats{display:flex;gap:8px;margin-top:8px;}
+.cs-box{background:var(--surface2);border-radius:5px;padding:6px 10px;font-size:11px;}
+.cs-n{font-weight:600;color:var(--text);}
+.cs-l{color:var(--text3);font-size:10px;}
+.empty-state{padding:3rem 1rem;text-align:center;color:var(--text3);}
+.empty-state p{font-size:13px;margin-top:6px;}
+
+/* Search tab */
+.rc-card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin-bottom:8px;}
+.rc-head{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap;}
+.rc-lbl{font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text);word-break:break-all;}
+.rc-meta{font-size:10px;color:var(--text3);margin-top:2px;}
+.ac-badge{font-size:10px;padding:3px 8px;border-radius:4px;white-space:nowrap;font-weight:500;}
+.ac-badge.yes{background:var(--green-bg);border:1px solid var(--green-border);color:var(--green);}
+.ac-badge.no{background:var(--surface2);border:1px solid var(--border);color:var(--text3);}
+mark{background:#fef9c3;color:#92400e;border-radius:2px;padding:0 1px;}
+
+/* Misc */
+.gdot{width:5px;height:5px;border-radius:50%;background:#22c55e;display:inline-block;margin-right:3px;}
+.muted{color:var(--text3);}
+.mono{font-family:'IBM Plex Mono',monospace;}
+</style>
+</head>
+<body>
+<div class="app">
+
+<div class="topbar">
+  <div class="logo"><div class="logo-dot"></div>소재 운영 체크 툴</div>
+  <div class="topbar-right">
+    <span class="file-count" id="fc-badge">파일 0개 로드됨</span>
+    <button class="btn btn-ghost" style="font-size:11px;" onclick="clearAll()">전체 초기화</button>
+  </div>
+</div>
+
+<div class="main">
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-label">파일 업로드</div>
+      <div class="dropzone" id="dz" onclick="document.getElementById('fi').click()">
+        <div class="dz-icon">↑</div>
+        <div class="dz-main">CSV 드롭 또는 <strong>클릭</strong></div>
+        <div class="dz-sub">복수 파일 가능</div>
+        <input type="file" id="fi" accept=".csv" multiple style="display:none">
+      </div>
+      <div id="file-chips"></div>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-label">메뉴</div>
+      <div class="nav-item active" onclick="goPage('cc')" id="nav-cc">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        크로스체크 <span class="nav-badge" id="nb-cc">—</span>
+      </div>
+      <div class="nav-item" onclick="goPage('dash')" id="nav-dash">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>
+        캠페인 현황 <span class="nav-badge" id="nb-dash">—</span>
+      </div>
+      <div class="nav-item" onclick="goPage('search')" id="nav-search">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+        라벨 검색
+      </div>
+      <div class="nav-item" onclick="goPage('diag')" id="nav-diag">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        애드그룹 진단 <span class="nav-badge" id="nb-diag">—</span>
+      </div>
+    </div>
+  </nav>
+
+  <div class="content">
+
+    <!-- 크로스체크 -->
+    <div class="page active" id="page-cc">
+      <div class="page-title">크로스체크</div>
+      <div class="page-sub">확인할 소재 목록과 CSV 파일을 비교합니다</div>
+
+      <div class="card">
+        <div class="card-label">검색 기준 컬럼</div>
+        <div class="seg">
+          <button class="seg-btn on" id="col-label" onclick="setCol('label')">Creative label</button>
+          <button class="seg-btn" id="col-crpid" onclick="setCol('crpid')">CRPID</button>
+        </div>
+        <div class="card-label" style="margin-top:12px;">확인할 소재 목록</div>
+        <textarea id="exp" rows="6" placeholder="줄바꿈으로 구분하여 입력&#10;&#10;IMG_RP_Popcorn_260409_noend&#10;muzogun_260501&#10;..."></textarea>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="runCheck()">크로스체크 실행 →</button>
+          <span class="status-msg" id="smsg"></span>
+        </div>
+      </div>
+      <div id="res"></div>
+    </div>
+
+    <!-- 캠페인 현황 (B안) -->
+    <div class="page" id="page-dash">
+      <div class="page-title">캠페인 현황</div>
+      <div class="page-sub">캠페인별 Active 소재 리스트를 확인합니다</div>
+      <div id="dash-body">
+        <div class="card">
+          <div class="empty-state">
+            <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto;opacity:.3;"><path d="M7 21h10M12 21V3M3 9l9-6 9 6"/></svg>
+            <p>CSV 파일을 업로드하면 캠페인 현황이 표시됩니다</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 라벨 검색 -->
+    <div class="page" id="page-search">
+      <div class="page-title">라벨 검색</div>
+      <div class="page-sub">라벨명으로 Active 캠페인과 OID를 실시간 조회합니다</div>
+      <div class="card">
+        <div class="card-label">검색 기준 컬럼</div>
+        <div class="seg">
+          <button class="seg-btn on" id="scol-label" onclick="setSCol('label')">Creative label</button>
+          <button class="seg-btn" id="scol-crpid" onclick="setSCol('crpid')">CRPID</button>
+        </div>
+        <input type="text" id="si" placeholder="검색어 입력 — Creative label 또는 CRPID 일부" oninput="runSearch()">
+      </div>
+      <div id="sres">
+        <div class="card"><div class="empty-state">
+          <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto;opacity:.3;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+          <p>검색어를 입력하면 캠페인과 OID를 확인할 수 있습니다</p>
+        </div></div>
+      </div>
+    </div>
+
+    <!-- 애드그룹 진단 -->
+    <div class="page" id="page-diag">
+      <div class="page-title">애드그룹 진단</div>
+      <div class="page-sub">소재별 애드그룹 바인딩 상태 진단 — 노출 안 되는 소재를 찾아냅니다</div>
+      <div id="diag-body">
+        <div class="card"><div class="empty-state">
+          <svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto;opacity:.3;"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+          <p>CSV 파일을 업로드하면 애드그룹 바인딩 상태 진단이 표시됩니다</p>
+        </div></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</div>
+
+<script>
+let pf={};
+let checkCol='label';
+let searchCol='label';
+let activeCamp=null;
+let checkFilter='all';
+let lastItems=[];
+
+const dz=document.getElementById('dz'),fi=document.getElementById('fi');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.style.borderColor='#9ca3af';});
+dz.addEventListener('dragleave',()=>{dz.style.borderColor='';});
+dz.addEventListener('drop',e=>{e.preventDefault();dz.style.borderColor='';hf([...e.dataTransfer.files]);});
+fi.addEventListener('change',()=>hf([...fi.files]));
+
+function pc(n){
+  const b=n.replace(/\.csv$/i,'');
+  const m=b.match(/^(.+?)_(\d{4})_([^_]+)_creative/i);
+  if(m)return{campaign:m[1],oid:m[3]};
+  const p=b.split('_');
+  return{campaign:p.slice(0,4).join('_'),oid:p[4]||b};
+}
+function gp(n){const u=n.toUpperCase();if(u.includes('_IOS'))return'ios';if(u.includes('_AOS')||u.includes('_ANDROID'))return'aos';return'etc';}
+function bdg(p){const c=p==='ios'?'plt-ios':p==='aos'?'plt-aos':'plt-etc';return`<span class="plt ${c}">${p.toUpperCase()}</span>`;}
+
+function hf(files){
+  const csvs=files.filter(f=>f.name.endsWith('.csv'));
+  if(!csvs.length){st('CSV 파일만 업로드 가능합니다.');return;}
+  let pending=csvs.length;
+  csvs.forEach(f=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      pf[f.name]={rows:pcsv(e.target.result),...pc(f.name),platform:gp(f.name)};
+      pending--;
+      if(pending===0){rfl();rebuildDash();}
+    };
+    r.readAsText(f,'utf-8');
+  });
+}
+function pcsv(text){
+  const lines=text.trim().split(/\r?\n/);
+  if(!lines.length)return[];
+  const hdr=prow(lines[0]);
+  const ix=n=>hdr.findIndex(h=>h.trim().replace(/^\uFEFF/,'').replace(/^"|"$/g,'').toLowerCase()===n.toLowerCase());
+  const li=ix('creative label'),pi=ix('crpid'),ti=ix('creative type'),ai=ix('am label');
+  const aci=ix('adgroup binding on & ad active'),ini=ix('adgroup binding on & ad inactive'),ofi=ix('adgroup binding off');
+  const agi=ix('adgroup count');
+  if(li===-1)return[];
+  const rows=[];
+  for(let i=1;i<lines.length;i++){
+    const c=prow(lines[i]);
+    if(!c[li])continue;
+    rows.push({
+      label:c[li]?.replace(/^"|"$/g,'').trim()||'',
+      crpid:pi>=0?c[pi]?.replace(/^"|"$/g,'').trim()||'':'',
+      type:c[ti]?.replace(/^"|"$/g,'').trim()||'',
+      am:c[ai]?.replace(/^"|"$/g,'').trim()||'',
+      adgroup:agi>=0?parseInt(c[agi])||0:0,
+      active:parseInt(c[aci])||0,
+      inactive:parseInt(c[ini])||0,
+      off:parseInt(c[ofi])||0
+    });
+  }
+  return rows;
+}
+function prow(line){
+  const r=[];let cur='',inQ=false;
+  for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'){inQ=!inQ;}else if(c===','&&!inQ){r.push(cur);cur='';}else cur+=c;}
+  r.push(cur);return r;
+}
+function rfl(){
+  const chips=Object.entries(pf).map(([n,d])=>{
+    const cnt=[...new Set(d.rows.map(r=>r.label))].length;
+    return`<span class="fchip">${bdg(d.platform)} <span style="font-size:10px;">${d.campaign.split('_').slice(-1)[0]}</span> <span style="color:var(--text3);">${cnt}개</span></span>`;
+  }).join('');
+  document.getElementById('file-chips').innerHTML=chips;
+  const total=Object.keys(pf).length;
+  document.getElementById('fc-badge').textContent=`파일 ${total}개 로드됨`;
+  document.getElementById('nb-dash').textContent=total;
+  if(document.getElementById('page-search').classList.contains('active'))runSearch();
+}
+function glm(col){
+  const map={};
+  for(const[fn,d]of Object.entries(pf)){
+    for(const row of d.rows){
+      const key=col==='crpid'?row.crpid:row.label;
+      if(!key)continue;
+      if(!map[key])map[key]={label:row.label,crpid:row.crpid,type:row.type,am:row.am,campaigns:[]};
+      map[key].campaigns.push({fn,campaign:d.campaign,oid:d.oid,platform:d.platform,active:row.active,inactive:row.inactive,off:row.off});
+    }
+  }
+  return map;
+}
+function goPage(p){
+  document.querySelectorAll('.page').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(e=>e.classList.remove('active'));
+  document.getElementById('page-'+p).classList.add('active');
+  document.getElementById('nav-'+p).classList.add('active');
+  if(p==='search')runSearch();
+  if(p==='diag')rebuildDiag();
+}
+function setCol(c){
+  checkCol=c;
+  document.getElementById('col-label').classList.toggle('on',c==='label');
+  document.getElementById('col-crpid').classList.toggle('on',c==='crpid');
+  document.getElementById('exp').placeholder=c==='crpid'?'CRPID를 줄바꿈으로 입력\n\nCRPID_12345\nCRPID_67890\n...':'줄바꿈으로 구분하여 입력\n\nIMG_RP_Popcorn_260409_noend\n...';
+}
+function setSCol(c){
+  searchCol=c;
+  document.getElementById('scol-label').classList.toggle('on',c==='label');
+  document.getElementById('scol-crpid').classList.toggle('on',c==='crpid');
+  document.getElementById('si').placeholder=c==='crpid'?'CRPID 일부 입력':'Creative label 일부 입력';
+  runSearch();
+}
+function setFilter(f){
+  checkFilter=f;
+  document.querySelectorAll('.f-btn').forEach(b=>b.classList.toggle('on',b.dataset.f===f));
+  renderGrid(lastItems);
+}
+function renderGrid(items){
+  lastItems=items;
+  const filtered=checkFilter==='all'?items:items.filter(i=>i.status===checkFilter);
+  document.getElementById('label-grid').innerHTML=filtered.map(item=>{
+    const ac=item.matchData?item.matchData.campaigns.filter(c=>c.active>0).length:0;
+    const sub=item.status==='match'?(ac?`${ac}개 캠페인 Active`:'파일 내 존재 (Active 없음)'):'파일에서 찾을 수 없음';
+    return`<div class="lchip-card ${item.status}">
+      <div class="lc-dot"></div>
+      <div style="min-width:0;">
+        <div class="lc-name" title="${item.key}">${item.key}</div>
+        <div class="lc-sub">${sub}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+function runCheck(){
+  const el=document.getElementById('res');
+  if(!Object.keys(pf).length){st('CSV 파일을 먼저 업로드해주세요.');return;}
+  const raw=document.getElementById('exp').value.trim();
+  if(!raw){st('확인할 목록을 입력해주세요.');return;}
+  const inputList=[...new Set(raw.split(/\r?\n/).map(s=>s.trim()).filter(Boolean))];
+  const map=glm(checkCol);
+  const items=inputList.map(key=>({key,status:map[key]?'match':'nomatch',matchData:map[key]||null}));
+  const mc=items.filter(i=>i.status==='match').length;
+  const nc=items.filter(i=>i.status==='nomatch').length;
+  checkFilter='all';
+  document.getElementById('nb-cc').textContent=`${mc}/${inputList.length}`;
+
+  const allFileKeys=Object.keys(map);
+  const inputSet=new Set(inputList);
+  const fileOnly=allFileKeys.filter(k=>!inputSet.has(k));
+
+  let html=`<div class="sum-bar">
+    <div class="sum-box ok"><div class="sum-l">파일에 있음</div><div class="sum-n">${mc}</div></div>
+    <div class="sum-box ng"><div class="sum-l">파일에 없음</div><div class="sum-n">${nc}</div></div>
+    <div class="sum-box"><div class="sum-l">입력 총계</div><div class="sum-n">${inputList.length}</div></div>
+  </div>
+  <div class="filter-row">
+    <button class="f-btn on" data-f="all" onclick="setFilter('all')">전체 ${inputList.length}</button>
+    <button class="f-btn" data-f="match" onclick="setFilter('match')">✓ 있음 ${mc}</button>
+    <button class="f-btn" data-f="nomatch" onclick="setFilter('nomatch')">✗ 없음 ${nc}</button>
+  </div>
+  <div class="label-grid" id="label-grid"></div>`;
+
+  if(fileOnly.length){
+    html+=`<div class="card" style="margin-top:.5rem;">
+      <div class="card-label">파일에만 있는 ${checkCol==='crpid'?'CRPID':'라벨'} (${fileOnly.length}개)</div>
+      <div class="fonly-wrap">${fileOnly.map(k=>`<span class="fonly-chip">${k}</span>`).join('')}</div>
+    </div>`;
+  }
+  el.innerHTML=html;
+  renderGrid(items);
+  st('');
+}
+function rebuildDash(){
+  const fns=Object.keys(pf);
+  if(!fns.length){
+    document.getElementById('dash-body').innerHTML=`<div class="card"><div class="empty-state"><svg width="28" height="28" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto;opacity:.3;"><path d="M7 21h10M12 21V3M3 9l9-6 9 6"/></svg><p>CSV 파일을 업로드하면 캠페인 현황이 표시됩니다</p></div></div>`;
+    return;
+  }
+  const map=glm('label');
+  const campaigns=fns.map(fn=>{
+    const d=pf[fn];
+    const activeLabels=[...new Set(d.rows.filter(r=>r.active>0).map(r=>r.label))];
+    const totalActive=d.rows.reduce((s,r)=>s+r.active,0);
+    return{fn,campaign:d.campaign,oid:d.oid,platform:d.platform,activeLabels,totalActive,allRows:d.rows};
+  }).sort((a,b)=>b.totalActive-a.totalActive);
+
+  const sidebarItems=campaigns.map((c,i)=>`
+    <div class="camp-item ${i===0?'on':''}" onclick="selectCamp(${i})" id="ci-${i}">
+      <div style="display:flex;align-items:center;gap:6px;">${bdg(c.platform)}<div class="ci-name">${c.campaign.split('_').slice(-2).join('_')}</div></div>
+      <div class="ci-sub">${c.oid.substring(0,12)}…</div>
+      <div class="ci-count"><div class="ci-dot"></div>${c.activeLabels.length} active</div>
+    </div>`).join('');
+
+  document.getElementById('dash-body').innerHTML=`
+    <div class="camp-wrap">
+      <div class="camp-sidebar">
+        <div class="camp-sidebar-hd"><p>캠페인 목록</p></div>
+        ${sidebarItems}
+      </div>
+      <div class="camp-content" id="camp-content"></div>
+    </div>`;
+
+  window._campaigns=campaigns;
+  selectCamp(0);
+}
+function selectCamp(idx){
+  window._campaigns.forEach((_,i)=>{
+    const el=document.getElementById('ci-'+i);
+    if(el)el.classList.toggle('on',i===idx);
+  });
+  window._activeCampIdx=idx;
+  renderCampView(idx,'list');
+}
+function renderCampView(idx,view){
+  window._activeCampIdx=idx;
+  window._activeCampView=view;
+  const c=window._campaigns[idx];
+  // deduplicated active labels
+  const uniqueLabels=[...new Set(c.allRows.filter(r=>r.active>0).map(r=>r.label))];
+  // full active rows (with repeats, for table view)
+  const activeRows=c.allRows.filter(r=>r.active>0);
+
+  const viewBtns=`<div style="display:flex;gap:6px;margin-top:8px;">
+    <button class="btn ${view==='list'?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 12px;" onclick="renderCampView(${idx},'list')">소재 목록</button>
+    <button class="btn ${view==='table'?'btn-primary':'btn-ghost'}" style="font-size:11px;padding:5px 12px;" onclick="renderCampView(${idx},'table')">상세 테이블</button>
+  </div>`;
+
+  const exportBtns=`<div style="display:flex;gap:6px;margin-bottom:10px;">
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="copyLabels(${idx})">복사 (줄바꿈)</button>
+    <button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="downloadCSV(${idx})">CSV 다운로드</button>
+    <span id="copy-msg-${idx}" style="font-size:11px;color:var(--green);align-self:center;"></span>
+  </div>`;
+
+  const listView=`${exportBtns}
+    <div style="background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;">
+      <div style="background:var(--surface2);border-bottom:1px solid var(--border);padding:7px 12px;display:flex;align-items:center;justify-content:space-between;">
+        <span style="font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text3);">Active 소재 (중복 제거)</span>
+        <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--green);background:var(--green-bg);border:1px solid var(--green-border);padding:2px 7px;border-radius:3px;">${uniqueLabels.length}개</span>
+      </div>
+      <div style="padding:4px 0;">
+        ${uniqueLabels.map((lbl,i)=>`
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:${i<uniqueLabels.length-1?'1px solid var(--surface2)':'none'};">
+            <span style="font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text3);min-width:22px;text-align:right;">${i+1}</span>
+            <span style="font-size:12px;font-family:'IBM Plex Mono',monospace;color:var(--text);">${lbl}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+
+  const tRows=activeRows.map(r=>`<tr>
+    <td>${r.label}</td>
+    <td>${r.crpid||'<span class="muted">—</span>'}</td>
+    <td style="color:var(--text2);">${r.type||'—'}</td>
+    <td class="r" style="color:var(--green);">${r.active}</td>
+    <td class="r muted">${r.inactive}</td>
+    <td class="r muted">${r.off}</td>
+  </tr>`).join('');
+  const tableView=`${exportBtns}
+    <div class="tbl-outer"><table>
+      <thead><tr><th>Creative label</th><th>CRPID</th><th>Type</th><th class="r">Active</th><th class="r">Inactive</th><th class="r">OFF</th></tr></thead>
+      <tbody>${tRows}</tbody>
+    </table></div>`;
+
+  document.getElementById('camp-content').innerHTML=`
+    <div class="camp-hd">
+      <div class="camp-title">${c.campaign}</div>
+      <div class="camp-oid">OID: ${c.oid}</div>
+      <div class="camp-stats">
+        <div class="cs-box"><span class="cs-n" style="color:var(--green);">${uniqueLabels.length}</span> <span class="cs-l">Active 소재 (중복 제거)</span></div>
+        <div class="cs-box"><span class="cs-n">${activeRows.length}</span> <span class="cs-l">Active 행 합계</span></div>
+        <div class="cs-box"><span class="cs-n">${c.allRows.length}</span> <span class="cs-l">전체 행</span></div>
+      </div>
+      ${viewBtns}
+    </div>
+    ${uniqueLabels.length?(view==='list'?listView:tableView):`<div class="card"><div class="empty-state"><p>Active 소재가 없습니다</p></div></div>`}`;
+}
+function getUniqueLabels(idx){
+  const c=window._campaigns[idx];
+  return[...new Set(c.allRows.filter(r=>r.active>0).map(r=>r.label))];
+}
+function copyLabels(idx){
+  const labels=getUniqueLabels(idx);
+  navigator.clipboard.writeText(labels.join('\n')).then(()=>{
+    const el=document.getElementById('copy-msg-'+idx);
+    if(el){el.textContent=`✓ ${labels.length}개 복사됨`;setTimeout(()=>{el.textContent='';},2000);}
+  }).catch(()=>{
+    const el=document.getElementById('copy-msg-'+idx);
+    if(el){el.textContent='복사 실패 — 수동으로 선택해주세요';}
+  });
+}
+function downloadCSV(idx){
+  const c=window._campaigns[idx];
+  const labels=getUniqueLabels(idx);
+  const rows=[['No','Creative label'],  ...labels.map((l,i)=>[i+1,l])];
+  const csv='\uFEFF'+rows.map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`active_labels_${c.campaign}_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+function runSearch(){
+  const q=document.getElementById('si').value.trim().toLowerCase();
+  const el=document.getElementById('sres');
+  if(!Object.keys(pf).length){el.innerHTML=`<div class="card"><div class="empty-state"><p>CSV 파일을 먼저 업로드해주세요</p></div></div>`;return;}
+  if(!q){el.innerHTML=`<div class="card"><div class="empty-state"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto;opacity:.3;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><p>검색어를 입력하면 캠페인과 OID를 확인할 수 있습니다</p></div></div>`;return;}
+  const map=glm(searchCol);
+  const hit=Object.entries(map).filter(([k])=>k.toLowerCase().includes(q));
+  if(!hit.length){el.innerHTML=`<div class="card"><p style="font-size:13px;color:var(--text2);">"${q}" 와 일치하는 ${searchCol==='crpid'?'CRPID':'라벨'} 없음</p></div>`;return;}
+  const esc=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  el.innerHTML=hit.map(([key,data])=>{
+    const ac=data.campaigns.filter(c=>c.active>0);
+    const hl=key.replace(new RegExp(esc(q),'gi'),m=>`<mark>${m}</mark>`);
+    const trs=data.campaigns.map(c=>`<tr style="${c.active>0?'':'opacity:.4'}">
+      <td>${bdg(c.platform)}</td>
+      <td class="mono" style="font-size:10px;">${c.campaign}</td>
+      <td class="mono muted" style="font-size:10px;">${c.oid}</td>
+      <td class="r" style="color:${c.active>0?'var(--green)':'var(--text3)'};">${c.active}</td>
+      <td class="r muted">${c.inactive}</td>
+      <td class="r muted">${c.off}</td>
+      <td class="c">${c.active>0?'<span class="gdot"></span>':''}</td>
+    </tr>`).join('');
+    return`<div class="rc-card">
+      <div class="rc-head">
+        <div><div class="rc-lbl">${hl}</div>
+        ${searchCol==='crpid'?`<div class="rc-meta">label: ${data.label||'—'}</div>`:`<div class="rc-meta">crpid: ${data.crpid||'—'} · ${data.type||'—'}</div>`}
+        </div>
+        <span class="ac-badge ${ac.length?'yes':'no'}">${ac.length?`${ac.length}개 캠페인 Active`:'Active 없음'}</span>
+      </div>
+      <div class="tbl-outer"><table>
+        <thead><tr><th>플랫폼</th><th>캠페인명</th><th>OID</th><th class="r">Active</th><th class="r">Inactive</th><th class="r">OFF</th><th class="c">상태</th></tr></thead>
+        <tbody>${trs}</tbody>
+      </table></div>
+    </div>`;
+  }).join('');
+}
+function cleanLine(s){
+  // 이모지 제거
+  s=s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27FF}\u{2B00}-\u{2BFF}\u{1F300}-\u{1F9FF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu,'');
+  // 줄 앞 기호/불릿/공백 제거 (n, ✓, -, *, •, · 등)
+  s=s.replace(/^[\s\-\*•·✓✗✘▪▸►◆○●□■◦‣⁃n\u00a0]+/,'');
+  // 줄 뒤 공백 제거
+  return s.trim();
+}
+function cleanInput(raw){
+  return raw.split(/\r?\n/).map(cleanLine).filter(Boolean).join('\n');
+}
+// paste 이벤트: 붙여넣기 시 자동 정리
+document.getElementById('exp').addEventListener('paste',function(e){
+  e.preventDefault();
+  const pasted=e.clipboardData.getData('text');
+  const cleaned=cleanInput(pasted);
+  const ta=this;
+  const start=ta.selectionStart,end=ta.selectionEnd;
+  const before=ta.value.slice(0,start),after=ta.value.slice(end);
+  ta.value=before+cleaned+after;
+  ta.selectionStart=ta.selectionEnd=start+cleaned.length;
+  // 정리된 줄 수 표시
+  const lines=cleaned.split('\n').length;
+  st(`✓ ${lines}개 라벨 자동 정리됨`);
+  setTimeout(()=>st(''),2500);
+});
+function st(m){document.getElementById('smsg').textContent=m;}
+function clearAll(){
+  pf={};activeCamp=null;checkFilter='all';lastItems=[];
+  document.getElementById('file-chips').innerHTML='';
+  document.getElementById('fc-badge').textContent='파일 0개 로드됨';
+  document.getElementById('nb-cc').textContent='—';
+  document.getElementById('nb-dash').textContent='—';
+  document.getElementById('res').innerHTML='';
+  document.getElementById('sres').innerHTML=`<div class="card"><div class="empty-state"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24" style="margin:0 auto;opacity:.3;"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg><p>검색어를 입력하면 캠페인과 OID를 확인할 수 있습니다</p></div></div>`;
+  document.getElementById('exp').value='';
+  document.getElementById('si').value='';
+  document.getElementById('fi').value='';
+  rebuildDash();
+  st('');
+}
+// adgroup diag
+let diagFilter='all';
+function getDiagStatus(r){
+  const ac=parseInt(r.adgroup)||0,active=parseInt(r.active)||0,inactive=parseInt(r.inactive)||0,off=parseInt(r.off)||0;
+  if(ac===0)return'nogroup';
+  if(active>0)return'ok';
+  if(off>0&&active===0&&inactive===0)return'grpoff';
+  if(inactive>0&&active===0)return'inactive';
+  return'unknown';
+}
+const DM={
+  ok:{label:'정상 Active',color:'var(--green)',bg:'var(--green-bg)',border:'var(--green-border)'},
+  nogroup:{label:'케이스1 그룹 없음',color:'var(--red)',bg:'var(--red-bg)',border:'var(--red-border)'},
+  grpoff:{label:'케이스2 그룹 OFF',color:'var(--amber)',bg:'var(--amber-bg)',border:'var(--amber-border)'},
+  inactive:{label:'소재 Inactive',color:'#1e40af',bg:'#eff6ff',border:'#93c5fd'},
+  unknown:{label:'기타',color:'var(--text3)',bg:'var(--surface2)',border:'var(--border)'},
+};
+function rebuildDiag(){
+  const el=document.getElementById('diag-body');
+  if(!Object.keys(pf).length){
+    el.innerHTML='<div class="card"><div class="empty-state"><p>CSV 파일을 업로드하면 애드그룹 바인딩 상태 진단이 표시됩니다</p></div></div>';
+    return;
+  }
+  const allRows=[];
+  for(const[fn,d]of Object.entries(pf)){
+    const seen=new Set();
+    for(const r of d.rows){
+      const key=r.label+'||'+fn;
+      if(seen.has(key))continue;
+      seen.add(key);
+      const sr={...r,campaign:d.campaign,platform:d.platform};
+      sr.status=getDiagStatus(sr);
+      allRows.push(sr);
+    }
+  }
+  const cnt={ok:0,nogroup:0,grpoff:0,inactive:0,unknown:0};
+  allRows.forEach(r=>cnt[r.status]=(cnt[r.status]||0)+1);
+  const total=allRows.length;
+  const issueCount=(cnt.nogroup||0)+(cnt.grpoff||0)+(cnt.inactive||0);
+  const nb=document.getElementById('nb-diag');
+  if(nb)nb.textContent=issueCount>0?('⚠'+issueCount):'✓';
+  const statCards=Object.entries(DM).filter(([k])=>cnt[k]>0).map(([k,m])=>`<div style="background:${m.bg};border:1px solid ${m.border};border-radius:8px;padding:12px 14px;cursor:pointer;" onclick="setDiagFilter('${k}')"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:${m.color};margin-bottom:3px;">${m.label}</div><div style="font-size:22px;font-weight:600;font-family:'IBM Plex Mono',monospace;color:${m.color};">${cnt[k]}</div></div>`).join('');
+  const filterBtns=[['all','전체 '+total],['nogroup','케이스1 그룹 없음 '+(cnt.nogroup||0)],['grpoff','케이스2 그룹 OFF '+(cnt.grpoff||0)],['inactive','소재 Inactive '+(cnt.inactive||0)],['ok','정상 '+(cnt.ok||0)]]
+    .map(([f,lbl])=>`<button class="btn btn-ghost diag-fbtn" id="dfb-${f}" style="font-size:11px;padding:5px 12px;font-family:'IBM Plex Mono',monospace;" onclick="setDiagFilter('${f}')">${lbl}</button>`).join('');
+  el.innerHTML=`<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px;margin-bottom:1rem;">${statCards}</div><div class="card" style="padding:1rem 1.25rem;"><div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;"><div style="display:flex;gap:6px;flex-wrap:wrap;" id="diag-filters">${filterBtns}</div><div style="display:flex;gap:6px;"><button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="copyDiagLabels()">문제 소재 복사</button><button class="btn btn-ghost" style="font-size:11px;padding:5px 12px;" onclick="downloadDiagCSV()">CSV 다운로드</button><span id="diag-copy-msg" style="font-size:11px;color:var(--green);align-self:center;"></span></div></div><div class="tbl-outer" id="diag-tbl"></div></div>`;
+  diagFilter='all';window._diagRows=allRows;hlDiagF();renderDiagTbl(allRows);
+}
+function setDiagFilter(f){diagFilter=f;hlDiagF();renderDiagTbl(window._diagRows||[]);}
+function hlDiagF(){document.querySelectorAll('.diag-fbtn').forEach(b=>{const on=b.id.replace('dfb-','')===diagFilter;b.style.background=on?'var(--accent)':'';b.style.color=on?'#fff':'';b.style.borderColor=on?'var(--accent)':'';});}
+function renderDiagTbl(rows){
+  const el=document.getElementById('diag-tbl');if(!el)return;
+  const filtered=diagFilter==='all'?rows:rows.filter(r=>r.status===diagFilter);
+  if(!filtered.length){el.innerHTML='<div style="padding:2rem;text-align:center;color:var(--text3);font-size:13px;">해당 케이스의 소재가 없습니다</div>';return;}
+  const trows=filtered.map(r=>{
+    const m=DM[r.status];
+    const badge=`<span style="font-size:9px;font-weight:500;background:${m.bg};color:${m.color};border:1px solid ${m.border};border-radius:3px;padding:2px 7px;">${m.label}</span>`;
+    const rb=r.status==='nogroup'?'background:var(--red-bg);':r.status==='grpoff'?'background:var(--amber-bg);':r.status==='inactive'?'background:#eff6ff;':'';
+    return`<tr style="${rb}"><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.label}">${r.label}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text2);">${r.crpid||'—'}</td><td style="font-size:11px;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text2);">${r.type||'—'}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;">${r.adgroup}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:${r.active>0?'var(--green)':'var(--text3)'};">${r.active}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:var(--text3);">${r.inactive}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:var(--text3);">${r.off}</td><td style="padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;">${badge}</td><td style="font-size:10px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text3);">${bdg(r.platform)} ${r.campaign.split('_').slice(-2).join('_')}</td></tr>`;
+  }).join('');
+  el.innerHTML=`<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--surface2);"><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);">Creative label</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);">CRPID</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);">Type</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">그룹수</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">Active</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">Inactive</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">OFF</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">상태</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);">캠페인</th></tr></thead><tbody>${trows}</tbody></table>`;
+}
+function copyDiagLabels(){
+  const issues=(window._diagRows||[]).filter(r=>r.status!=='ok'&&r.status!=='unknown');
+  const labels=[...new Set(issues.map(r=>r.label))];
+  navigator.clipboard.writeText(labels.join('\n')).then(()=>{const el=document.getElementById('diag-copy-msg');if(el){el.textContent='✓ '+labels.length+'개 복사됨';setTimeout(()=>{el.textContent='';},2000);}});
+}
+function downloadDiagCSV(){
+  const rows=diagFilter==='all'?(window._diagRows||[]):(window._diagRows||[]).filter(r=>r.status===diagFilter);
+  const hdr=['Creative label','CRPID','Type','Adgroup count','Active','Inactive','OFF','상태','캠페인'];
+  const csv='\uFEFF'+[hdr,...rows.map(r=>[r.label,r.crpid,r.type,r.adgroup,r.active,r.inactive,r.off,DM[r.status]&&DM[r.status].label||r.status,r.campaign])].map(row=>row.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='adgroup_diag_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
+}
+
+</script>
+</body>
+</html>
