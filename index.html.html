@@ -309,7 +309,7 @@ fi.addEventListener('change',()=>hf([...fi.files]));
 
 function pc(n){
   const b=n.replace(/\.csv$/i,'');
-  const m=b.match(/^(.+?)_(\d{4})_([^_]+)_creative/i);
+  const m=b.match(/^(.+?)_(\d{4})_(.+?)_creative/i);
   if(m)return{campaign:m[1],oid:m[3]};
   const p=b.split('_');
   return{campaign:p.slice(0,4).join('_'),oid:p[4]||b};
@@ -698,7 +698,7 @@ function rebuildDiag(){
       const key=r.label+'||'+fn;
       if(seen.has(key))continue;
       seen.add(key);
-      const sr={...r,campaign:d.campaign,platform:d.platform};
+      const sr={...r,campaign:d.campaign,oid:d.oid,platform:d.platform};
       sr.status=getDiagStatus(sr);
       allRows.push(sr);
     }
@@ -725,7 +725,7 @@ function renderDiagTbl(rows){
     const m=DM[r.status];
     const badge=`<span style="font-size:9px;font-weight:500;background:${m.bg};color:${m.color};border:1px solid ${m.border};border-radius:3px;padding:2px 7px;">${m.label}</span>`;
     const rb=r.status==='nogroup'?'background:var(--red-bg);':r.status==='grpoff'?'background:var(--amber-bg);':r.status==='inactive'?'background:#eff6ff;':'';
-    return`<tr style="${rb}"><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.label}">${r.label}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text2);">${r.crpid||'—'}</td><td style="font-size:11px;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text2);">${r.type||'—'}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;">${r.adgroup}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:${r.active>0?'var(--green)':'var(--text3)'};">${r.active}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:var(--text3);">${r.inactive}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:var(--text3);">${r.off}</td><td style="padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;">${badge}</td><td style="font-size:10px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text3);">${bdg(r.platform)} ${r.campaign.split('_').slice(-2).join('_')}</td></tr>`;
+    return`<tr style="${rb}"><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.label}">${r.label}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text2);">${r.crpid||'—'}</td><td style="font-size:11px;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text2);">${r.type||'—'}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;">${r.adgroup}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:${r.active>0?'var(--green)':'var(--text3)'};">${r.active}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:var(--text3);">${r.inactive}</td><td style="font-size:11px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;color:var(--text3);">${r.off}</td><td style="padding:7px 10px;border-bottom:1px solid var(--surface2);text-align:center;">${badge}</td><td style="font-size:10px;font-family:'IBM Plex Mono',monospace;padding:7px 10px;border-bottom:1px solid var(--surface2);color:var(--text3);">${bdg(r.platform)} ${r.campaign}<br><span style='font-size:9px;opacity:.7;'>${r.oid||''}</span></td></tr>`;
   }).join('');
   el.innerHTML=`<table style="width:100%;border-collapse:collapse;"><thead><tr style="background:var(--surface2);"><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);">Creative label</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);">CRPID</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);">Type</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">그룹수</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">Active</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">Inactive</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">OFF</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;text-align:center;border-bottom:1px solid var(--border);">상태</th><th style="font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text3);padding:8px 10px;border-bottom:1px solid var(--border);">캠페인</th></tr></thead><tbody>${trows}</tbody></table>`;
 }
@@ -736,8 +736,8 @@ function copyDiagLabels(){
 }
 function downloadDiagCSV(){
   const rows=diagFilter==='all'?(window._diagRows||[]):(window._diagRows||[]).filter(r=>r.status===diagFilter);
-  const hdr=['Creative label','CRPID','Type','Adgroup count','Active','Inactive','OFF','상태','캠페인'];
-  const csv='\uFEFF'+[hdr,...rows.map(r=>[r.label,r.crpid,r.type,r.adgroup,r.active,r.inactive,r.off,DM[r.status]&&DM[r.status].label||r.status,r.campaign])].map(row=>row.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
+  const hdr=['Creative label','CRPID','Type','Adgroup count','Active','Inactive','OFF','상태','캠페인','OID'];
+  const csv='\uFEFF'+[hdr,...rows.map(r=>[r.label,r.crpid,r.type,r.adgroup,r.active,r.inactive,r.off,DM[r.status]&&DM[r.status].label||r.status,r.campaign,r.oid||''])].map(row=>row.map(v=>'"'+String(v||'').replace(/"/g,'""')+'"').join(',')).join('\r\n');
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));a.download='adgroup_diag_'+new Date().toISOString().slice(0,10)+'.csv';a.click();
 }
 
