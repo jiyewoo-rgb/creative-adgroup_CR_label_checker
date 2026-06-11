@@ -1,0 +1,22 @@
+{
+  "name": "creative-adgroup-cr-label-checker",
+  "version": "1.0.0",
+  "description": "Creative Ad Group CR Label Checker Tool with Vercel Web Analytics",
+  "scripts": {
+    "dev": "npx serve .",
+    "build": "echo 'No build step required for static HTML'",
+    "lint": "echo 'No linter configured'",
+    "test": "echo 'No tests configured'"
+  },
+  "dependencies": {
+    "@vercel/analytics": "^1.1.1"
+  },
+  "keywords": [
+    "analytics",
+    "vercel",
+    "creative",
+    "adgroup"
+  ],
+  "author": "",
+  "license": "ISC"
+}
